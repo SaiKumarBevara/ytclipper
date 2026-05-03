@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Viral Shorts Clipper (ytclipper)
+
+An intelligent, high-performance web application built with Next.js that automatically converts YouTube videos into engaging 1080x1920 vertical Shorts. 
+
+## Features
+
+- **Auto Detect Mode**: Uses a heatmap-based peak detection algorithm to automatically identify viral segments and engagement hooks from long-form content.
+- **Manual Mode**: Gives creators full control to select up to 10 custom clips for batch processing.
+- **Perfect Lip-Sync**: Uses separate stream mapping for audio and video to ensure they remain perfectly synced during the aspect ratio conversion and clipping process.
+- **High-Performance Pipeline**: Fast downloading and processing leveraging `yt-dlp` and `FFmpeg`.
+- **Auto-Cleanup**: Built-in temporary file management that automatically cleans up storage after generating the clips.
+- **Modern UI**: A responsive, beautiful frontend built with Tailwind CSS, Framer Motion, and Lucide React.
+
+## Tech Stack
+
+- **Framework**: [Next.js 14](https://nextjs.org/) (App Router)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Animations**: [Framer Motion](https://www.framer.com/motion/)
+- **Video Processing**: [fluent-ffmpeg](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg) with `ffmpeg-static`
+- **YouTube Downloader**: [yt-dlp-exec](https://github.com/microlinkhq/youtube-dl-exec)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js (v18 or higher recommended)
+- Optional: Global FFmpeg installation (the project uses `ffmpeg-static` by default, but system FFmpeg can provide better performance in some environments).
+
+### Installation
+
+1. Clone the repository and navigate to the project directory.
+2. Install the dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Configure environment variables (if required, check `.env.local`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Start the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-## Learn More
+## Troubleshooting
 
-To learn more about Next.js, take a look at the following resources:
+- **EBUSY Error on Windows**: If you are running the project inside a OneDrive-synced folder on Windows, you might occasionally encounter an `EBUSY: resource busy or locked` error during development. To resolve this, pause OneDrive syncing while developing or move the project out of the OneDrive folder.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
