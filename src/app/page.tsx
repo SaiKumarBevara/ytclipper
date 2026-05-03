@@ -9,9 +9,12 @@ export default function Home() {
   const [status, setStatus] = useState<"idle" | "checking" | "safe" | "copyrighted" | "processing" | "done">("idle");
   const [duration, setDuration] = useState<number>(15);
   const [numClips, setNumClips] = useState<number | "auto">("auto");
+  const [uploadToYoutube, setUploadToYoutube] = useState<boolean>(true);
   const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [downloadUrls, setDownloadUrls] = useState<string[]>([]);
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
 
   const handleCheckUrl = async () => {
     if (!url.includes("youtube.com") && !url.includes("youtu.be")) {
@@ -49,34 +52,68 @@ export default function Home() {
   const handleGenerate = async () => {
     setStatus("processing");
     setProgress(0);
+    setProgressMessage("Starting backend process...");
     setDownloadUrls([]);
-
-    // Simulate progress while the API processes
-    const progressInterval = setInterval(() => {
-      setProgress((prev) => (prev >= 95 ? 95 : prev + 5));
-    }, 1000);
+    setUploadedUrls([]);
 
     try {
       const res = await fetch("/api/video/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, duration, numClips }),
+        body: JSON.stringify({ url, duration, numClips, uploadToYoutube }),
       });
-      const data = await res.json();
-
-      clearInterval(progressInterval);
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to process video");
+        let errText = "Failed to process video";
+        try {
+           const json = await res.json();
+           errText = json.error || errText;
+        } catch(e) {}
+        throw new Error(errText);
       }
 
-      setProgress(100);
-      setStatus("done");
-      if (data.fileIds && Array.isArray(data.fileIds)) {
-        setDownloadUrls(data.fileIds.map((id: string) => `/api/video/download?fileId=${id}`));
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("Could not start stream");
+      
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || ''; // keep incomplete chunk
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.substring(6));
+              
+              if (data.type === 'progress') {
+                setProgress(Math.round(data.progress));
+                setProgressMessage(data.message);
+              } else if (data.type === 'done') {
+                setProgress(100);
+                setStatus("done");
+                if (data.fileIds) {
+                  setDownloadUrls(data.fileIds.map((id: string) => `/api/video/download?fileId=${id}`));
+                }
+                if (data.uploadedUrls) {
+                  setUploadedUrls(data.uploadedUrls);
+                }
+              } else if (data.type === 'error') {
+                throw new Error(data.error);
+              }
+            } catch (err: any) {
+              // Ignore simple parse errors if JSON is chunked weirdly, but throw our explicit error
+              if (line.includes('"type":"error"')) throw err;
+            }
+          }
+        }
       }
     } catch (e: unknown) {
-      clearInterval(progressInterval);
       setStatus("safe");
       setErrorMessage((e as Error).message || "An error occurred during processing.");
     }
@@ -190,6 +227,18 @@ export default function Home() {
                   </div>
                 </div>
 
+                <div className="space-y-2 mt-4">
+                  <label className="text-sm font-medium text-gray-300">Action</label>
+                  <select
+                    value={uploadToYoutube ? "upload" : "generate"}
+                    onChange={(e) => setUploadToYoutube(e.target.value === "upload")}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                  >
+                    <option value="upload" className="bg-gray-900">Generate + Upload to YouTube</option>
+                    <option value="generate" className="bg-gray-900">Generate Only (Download Locally)</option>
+                  </select>
+                </div>
+
                 <button
                   onClick={handleGenerate}
                   className="w-full bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white font-bold py-4 rounded-xl transition-all flex justify-center items-center shadow-xl shadow-purple-500/20"
@@ -223,12 +272,7 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-sm font-medium text-blue-400 text-center animate-pulse">
-                  {progress < 10 && "🧠 Analyzing YouTube engagement heatmap..."}
-                  {progress >= 10 && progress < 30 && "📥 Downloading 1080p video stream..."}
-                  {progress >= 30 && progress < 45 && "🎵 Downloading high-fidelity audio..."}
-                  {progress >= 45 && progress < 75 && "✂️ Cropping and extracting viral hooks..."}
-                  {progress >= 75 && progress < 95 && "🎬 Stitching and encoding final Shorts..."}
-                  {progress >= 95 && "✨ Finalizing..."}
+                  {progressMessage}
                 </p>
               </motion.div>
             )}
@@ -258,6 +302,23 @@ export default function Home() {
                       Download Viral Clip {i + 1}
                     </a>
                   ))}
+                  
+                  {uploadedUrls.length > 0 && (
+                    <div className="pt-4 border-t border-white/10 space-y-3">
+                      <h4 className="text-sm font-semibold text-gray-300">Successfully Uploaded to YouTube:</h4>
+                      {uploadedUrls.map((url, i) => (
+                        <a
+                          key={`yt-${i}`}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all flex justify-center items-center shadow-lg shadow-red-600/20"
+                        >
+                          View Short {i + 1} on YouTube
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={() => {
